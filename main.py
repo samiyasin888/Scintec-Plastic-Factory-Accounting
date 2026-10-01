@@ -1,7 +1,7 @@
 import tkinter as tk
-from ui.main_window import GlobalAccountingApp
+from ui.login import LoginWindow
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = GlobalAccountingApp(root)
+    LoginWindow(root)
     root.mainloop()
