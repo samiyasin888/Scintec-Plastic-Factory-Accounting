@@ -19,13 +19,33 @@ class GlobalAccountingApp:
         self.translator = Translator(self.lang)
         self.current_invoice_items = []
         self.project_name = "Global"
+        self.company_name_var = tk.StringVar()
         self.build_ui()
+        self.apply_company_branding()
         self.reload_data()
 
     def t(self, key):
         return self.translator.t(key)
 
+    def apply_company_branding(self):
+        company = self.service.get_company() or {}
+        company_name = company.get("name") or APP_COMPANY
+        self.company_name_var.set(company_name)
+        self.root.title(f"{company_name} - {self.t('app_title')}")
+        if hasattr(self, "header_label"):
+            self.header_label.config(text=f"{company_name}  |  {self.t('app_title')}")
+
     def build_ui(self):
+        header = ttk.Frame(self.root, padding=(20, 14, 20, 8))
+        header.pack(fill=tk.X)
+        self.header_label = ttk.Label(
+            header,
+            text="",
+            font=("Arial", 16, "bold"),
+            foreground="#1f2937",
+        )
+        self.header_label.pack(anchor="w")
+
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True)
 
@@ -303,6 +323,7 @@ class GlobalAccountingApp:
             )
             self.lang = self.language_var.get()
             self.translator = Translator(self.lang)
+            self.apply_company_branding()
             self.notebook.tab(0, text=self.t("dashboard"))
             self.notebook.tab(1, text=self.t("invoices"))
             self.notebook.tab(2, text=self.t("inventory"))
