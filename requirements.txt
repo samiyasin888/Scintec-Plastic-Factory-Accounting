@@ -1,0 +1,4 @@
+# requirements
+
+# no external deps required for the initial version
+# tkinter is part of the Python standard library
