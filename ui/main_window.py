@@ -5,6 +5,7 @@ from config.config import APP_COMPANY
 from database.db import initialize_database
 from services.accounting_service import AccountingService
 from services.translation_service import Translator
+from ui.reports_panel import ReportsPanel
 
 
 class GlobalAccountingApp:
@@ -53,18 +54,21 @@ class GlobalAccountingApp:
         self.invoice_tab = ttk.Frame(self.notebook)
         self.inventory_tab = ttk.Frame(self.notebook)
         self.payroll_tab = ttk.Frame(self.notebook)
+        self.reports_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
 
         self.notebook.add(self.dashboard_tab, text=self.t("dashboard"))
         self.notebook.add(self.invoice_tab, text=self.t("invoices"))
         self.notebook.add(self.inventory_tab, text=self.t("inventory"))
         self.notebook.add(self.payroll_tab, text=self.t("payroll"))
+        self.notebook.add(self.reports_tab, text=self.t("reports"))
         self.notebook.add(self.settings_tab, text=self.t("settings"))
 
         self.build_dashboard()
         self.build_invoice_tab()
         self.build_inventory_tab()
         self.build_payroll_tab()
+        self.build_reports_tab()
         self.build_settings_tab()
 
     def build_dashboard(self):
@@ -100,6 +104,9 @@ class GlobalAccountingApp:
         info.insert(tk.END, "- Payroll module supports salary and deduction calculations\n")
         info.insert(tk.END, "- Settings allow company identity and bilingual support\n")
         info.configure(state=tk.DISABLED)
+
+    def build_reports_tab(self):
+        self.reports_panel = ReportsPanel(self.reports_tab)
 
     def build_invoice_tab(self):
         form = ttk.Frame(self.invoice_tab, padding=10)
@@ -167,6 +174,8 @@ class GlobalAccountingApp:
         self.invoice_tree.delete(*self.invoice_tree.get_children())
         messagebox.showinfo("Success", "Invoice created successfully.")
         self.reload_data()
+        if hasattr(self, "reports_panel"):
+            self.reports_panel.refresh()
 
     def build_inventory_tab(self):
         form = ttk.Frame(self.inventory_tab, padding=10)
@@ -213,6 +222,8 @@ class GlobalAccountingApp:
             )
             messagebox.showinfo("Success", "Product added successfully.")
             self.reload_data()
+            if hasattr(self, "reports_panel"):
+                self.reports_panel.refresh()
         except Exception as exc:
             messagebox.showerror("Error", f"Could not add product: {exc}")
 
@@ -266,6 +277,8 @@ class GlobalAccountingApp:
             )
             messagebox.showinfo("Success", "Employee added successfully.")
             self.reload_data()
+            if hasattr(self, "reports_panel"):
+                self.reports_panel.refresh()
         except Exception as exc:
             messagebox.showerror("Error", f"Could not add employee: {exc}")
 
@@ -286,6 +299,8 @@ class GlobalAccountingApp:
 
         messagebox.showinfo("Success", "Payroll generated successfully.")
         self.reload_data()
+        if hasattr(self, "reports_panel"):
+            self.reports_panel.refresh()
 
     def build_settings_tab(self):
         form = ttk.Frame(self.settings_tab, padding=20)
@@ -328,9 +343,12 @@ class GlobalAccountingApp:
             self.notebook.tab(1, text=self.t("invoices"))
             self.notebook.tab(2, text=self.t("inventory"))
             self.notebook.tab(3, text=self.t("payroll"))
-            self.notebook.tab(4, text=self.t("settings"))
+            self.notebook.tab(4, text=self.t("reports"))
+            self.notebook.tab(5, text=self.t("settings"))
             messagebox.showinfo("Success", "Settings saved successfully.")
             self.reload_data()
+            if hasattr(self, "reports_panel"):
+                self.reports_panel.refresh()
         except Exception as exc:
             messagebox.showerror("Error", f"Could not save settings: {exc}")
 
