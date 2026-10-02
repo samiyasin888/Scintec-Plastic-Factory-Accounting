@@ -1,20 +1,19 @@
 import tkinter as tk
 from tkinter import messagebox
-import sqlite3
 from database.db import get_connection
 
 
 class LoginWindow:
     def __init__(self, root):
         self.root = root
-        self.root.title("Global - Login")
-        self.root.geometry("500x400")
+        self.root.title("Global Accounting - Login")
+        self.root.geometry("500x420")
         self.root.resizable(False, False)
-        self.center_window()
-        self.build_login_ui()
+        self._center_window()
+        self.build_ui()
         self.init_default_user()
 
-    def center_window(self):
+    def _center_window(self):
         self.root.update_idletasks()
         width = self.root.winfo_width()
         height = self.root.winfo_height()
@@ -22,9 +21,9 @@ class LoginWindow:
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
-    def build_login_ui(self):
+    def build_ui(self):
         title = tk.Label(self.root, text="Global Accounting", font=("Arial", 24, "bold"), fg="#2c3e50")
-        title.pack(pady=30)
+        title.pack(pady=25)
 
         subtitle = tk.Label(self.root, text="Professional Accounting Software", font=("Arial", 10), fg="#7f8c8d")
         subtitle.pack()
@@ -69,16 +68,17 @@ class LoginWindow:
                     role TEXT DEFAULT 'admin'
                 )"""
             )
-            admin = conn.execute("SELECT * FROM users WHERE username = 'admin'").fetchone()
-            if not admin:
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE username = 'admin'").fetchone()
+            if not user:
                 conn.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", ("admin", "admin", "admin"))
                 conn.commit()
         finally:
             conn.close()
 
     def login(self):
-        username = self.username_var.get()
-        password = self.password_var.get()
+        username = self.username_var.get().strip()
+        password = self.password_var.get().strip()
 
         if not username or not password:
             messagebox.showwarning("Warning", "Please enter username and password")
@@ -86,10 +86,13 @@ class LoginWindow:
 
         conn = get_connection()
         try:
-            user = conn.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
+            user = conn.execute(
+                "SELECT * FROM users WHERE username = ? AND password = ?",
+                (username, password)
+            ).fetchone()
             if user:
-                messagebox.showinfo("Success", f"Welcome {username}!")
                 self.root.destroy()
+                import tkinter as tk
                 from ui.main_window import GlobalAccountingApp
                 root = tk.Tk()
                 app = GlobalAccountingApp(root)

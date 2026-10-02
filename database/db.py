@@ -1,35 +1,52 @@
+"""
+Database Module - SQLite Connection and Initialization
+Responsible for local database creation and connection management.
+"""
+
+import os
 import sqlite3
 from pathlib import Path
 
-from config.config import DB_PATH
+
+def get_app_data_path():
+    if os.name == 'nt':
+        app_data = os.getenv('APPDATA')
+        app_folder = os.path.join(app_data, 'Global Accounting')
+    else:
+        app_folder = os.path.expanduser('~/.global_accounting/GlobalAccounting')
+    Path(app_folder).mkdir(parents=True, exist_ok=True)
+    return app_folder
+
+
+def get_db_path():
+    return os.path.join(get_app_data_path(), 'global.db')
 
 
 def get_connection():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def initialize_database():
+def init_database():
     conn = get_connection()
+    cursor = conn.cursor()
+
     try:
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                country TEXT,
+                country TEXT DEFAULT 'Saudi Arabia',
                 currency TEXT DEFAULT 'USD',
-                tax_rate REAL DEFAULT 0.15,
-                language TEXT DEFAULT 'en'
+                tax_rate REAL DEFAULT 15.0,
+                language TEXT DEFAULT 'en',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT UNIQUE,
@@ -38,113 +55,106 @@ def initialize_database():
                 unit TEXT,
                 cost_price REAL DEFAULT 0,
                 selling_price REAL DEFAULT 0,
-                stock_quantity REAL DEFAULT 0,
-                min_stock REAL DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                quantity INTEGER DEFAULT 0,
+                min_quantity INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                phone TEXT,
-                email TEXT,
-                address TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS suppliers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                phone TEXT,
-                email TEXT,
-                address TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS invoices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 invoice_number TEXT UNIQUE,
-                invoice_date TEXT NOT NULL,
-                customer_id INTEGER,
                 customer_name TEXT,
-                invoice_type TEXT DEFAULT 'sale',
+                date TEXT,
                 subtotal REAL DEFAULT 0,
                 tax_amount REAL DEFAULT 0,
                 total REAL DEFAULT 0,
+                status TEXT DEFAULT 'pending',
                 notes TEXT,
-                FOREIGN KEY(customer_id) REFERENCES customers(id)
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS invoice_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 invoice_id INTEGER NOT NULL,
                 product_id INTEGER,
-                product_name TEXT NOT NULL,
-                quantity REAL NOT NULL,
+                product_name TEXT,
+                quantity INTEGER NOT NULL,
                 unit_price REAL NOT NULL,
-                total REAL NOT NULL,
-                FOREIGN KEY(invoice_id) REFERENCES invoices(id),
-                FOREIGN KEY(product_id) REFERENCES products(id)
+                line_total REAL,
+                FOREIGN KEY(invoice_id) REFERENCES invoices(id)
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS employees (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                position TEXT,
-                salary REAL DEFAULT 0,
-                bonus REAL DEFAULT 0,
+                emp_number TEXT UNIQUE,
+                first_name TEXT NOT NULL,
+                last_name TEXT NOT NULL,
+                email TEXT,
+                phone TEXT,
+                department TEXT,
+                base_salary REAL DEFAULT 0,
+                allowances REAL DEFAULT 0,
                 deductions REAL DEFAULT 0,
-                bank_account TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                salary_type TEXT DEFAULT 'monthly',
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            """
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS payroll (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 employee_id INTEGER NOT NULL,
-                period TEXT NOT NULL,
-                gross_salary REAL DEFAULT 0,
-                bonus REAL DEFAULT 0,
+                month TEXT NOT NULL,
+                base_salary REAL,
+                allowances REAL DEFAULT 0,
                 deductions REAL DEFAULT 0,
-                net_salary REAL DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                gross_salary REAL,
+                net_salary REAL,
+                paid_date TEXT,
+                status TEXT DEFAULT 'pending',
                 FOREIGN KEY(employee_id) REFERENCES employees(id)
             )
-            """
-        )
+        ''')
 
-        conn.execute(
-            "SELECT COUNT(*) FROM companies"
-        )
-        if conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0] == 0:
-            conn.execute(
-                "INSERT INTO companies (name, country, currency, tax_rate, language) VALUES (?, ?, ?, ?, ?)",
-                ("Scintec Plastic Factory", "Saudi Arabia", "USD", 0.15, "en"),
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT DEFAULT 'admin',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+        ''')
 
         conn.commit()
+
+        company = cursor.execute("SELECT * FROM companies WHERE id = 1").fetchone()
+        if not company:
+            cursor.execute(
+                "INSERT INTO companies (name, country, currency, tax_rate, language) VALUES (?, ?, ?, ?, ?)",
+                ('Scintec Plastic Factory', 'Saudi Arabia', 'USD', 15.0, 'en')
+            )
+            conn.commit()
+
+        user = cursor.execute("SELECT * FROM users WHERE username = 'admin'").fetchone()
+        if not user:
+            cursor.execute(
+                "INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
+                ('admin', 'admin', 'admin')
+            )
+            conn.commit()
+
+        print(f"Database initialized: {get_db_path()}")
     finally:
         conn.close()
+
+
+if __name__ == '__main__':
+    init_database()

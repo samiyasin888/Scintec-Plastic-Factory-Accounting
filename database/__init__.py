@@ -1,1 +1,1 @@
-# database package
+# Database module

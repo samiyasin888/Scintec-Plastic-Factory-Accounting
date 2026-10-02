@@ -1,1 +1,1 @@
-# config package
+# Config module
